@@ -21,7 +21,6 @@ commentsRouter
     const knexInstance = req.app.get('db')
     CommentsService.getAllComments(knexInstance)
       .then(comments => {
-          console.log(res.json)
         res.json(comments.map(serializeComment))
       })
       .catch(next)

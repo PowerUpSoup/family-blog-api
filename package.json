@@ -18,6 +18,9 @@
     "url": "git+https://github.com/PowerUpSoup/express-boilerplate.git"
   },
   "keywords": [],
+  "engines": {
+    "node": "13.8.0"
+  },
   "author": "Sean Jackson",
   "license": "ISC",
   "bugs": {

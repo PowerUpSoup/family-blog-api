@@ -21,7 +21,6 @@ articlesRouter
     const knexInstance = req.app.get('db')
     ArticlesService.getAllArticles(knexInstance)
       .then(articles => {
-          console.log(res.json)
         res.json(articles.map(serializeArticle))
       })
       .catch(next)
