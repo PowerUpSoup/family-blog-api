@@ -1,0 +1,105 @@
+const path = require('path')
+const express = require('express')
+const xss = require('xss')
+const ArticlesService = require('./articles-service')
+
+const articlesRouter = express.Router()
+const jsonParser = express.json()
+
+const serializeArticle = article => ({
+  id: article.id,
+  title: article.title,
+  authorid: article.authorid,
+  content: article.content,
+  modified: article.modified,
+  date_created: article.date_created,
+})
+
+articlesRouter
+  .route('/')
+  .get((req, res, next) => {
+    const knexInstance = req.app.get('db')
+    ArticlesService.getAllArticles(knexInstance)
+      .then(articles => {
+          console.log(res.json)
+        res.json(articles.map(serializeArticle))
+      })
+      .catch(next)
+  })
+  .post(jsonParser, (req, res, next) => {
+    const { title, authorid, content, modified } = req.body
+    const newArticle = { title, authorid, content, modified }
+
+    for (const [key, value] of Object.entries(newArticle))
+      if (value == null)
+        return res.status(400).json({
+          error: { message: `Missing '${key}' in request body` }
+        })
+
+    ArticlesService.insertArticle(
+      req.app.get('db'),
+      newArticle
+    )
+      .then(article => {
+        res
+          .status(201)
+          .location(path.posix.join(req.originalUrl, `/${article.id}`))
+          .json(serializeArticle(article))
+      })
+      .catch(next)
+  })
+
+articlesRouter
+  .route('/:article_id')
+  .all((req, res, next) => {
+    ArticlesService.getById(
+      req.app.get('db'),
+      req.params.article_id
+    )
+      .then(article => {
+        if (!article) {
+          return res.status(404).json({
+            error: { message: `Article doesn't exist` }
+          })
+        }
+        res.article = article
+        next()
+      })
+      .catch(next)
+  })
+  .get((req, res, next) => {
+    res.json(serializeArticle(res.article))
+  })
+  .delete((req, res, next) => {
+    ArticlesService.deleteArticle(
+      req.app.get('db'),
+      req.params.article_id
+    )
+      .then(numRowsAffected => {
+        res.status(204).end()
+      })
+      .catch(next)
+  })
+  .patch(jsonParser, (req, res, next) => {
+    const { title, authorid, content, modified  } = req.body
+    const articleToUpdate = { title, authorid, content, modified  }
+
+    const numberOfValues = Object.values(articleToUpdate).filter(Boolean).length
+    if (numberOfValues === 0)
+      return res.status(400).json({
+        error: {
+          message: `Request body must contain one of: 'title', 'modified' or 'content'`
+        }
+      })
+    ArticlesService.updateArticle(
+      req.app.get('db'),
+      req.params.article_id,
+      articleToUpdate
+    )
+      .then(numRowsAffected => {
+        res.status(204).end()
+      })
+      .catch(next)
+  })
+
+module.exports = articlesRouter;
